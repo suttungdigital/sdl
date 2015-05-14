@@ -146,15 +146,11 @@ else()
 endif()
 
 # Default flags, if not set otherwise
-if("$ENV{CFLAGS}" STREQUAL "")
-  if(USE_GCC OR USE_CLANG)
-    set(CMAKE_C_FLAGS "-g -O3")
-  endif()
-else()
-  set(CMAKE_C_FLAGS "$ENV{CFLAGS}")
+if(NOT ("$ENV{CFLAGS}" STREQUAL ""))
+  set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} "$ENV{CFLAGS}")
   list(APPEND EXTRA_CFLAGS "$ENV{CFLAGS}")
-endif()
-if(NOT ("$ENV{CFLAGS}" STREQUAL "")) # Hackish, but does the trick on Win32
+
+  # Hackish, but does the trick on Win32
   list(APPEND EXTRA_LDFLAGS "$ENV{LDFLAGS}")
 endif()
 
