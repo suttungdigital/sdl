@@ -734,7 +734,7 @@ endmacro()
 # PTHREAD_LIBS
 macro(CheckPTHREAD)
   if(PTHREADS)
-    if(LINUX)
+    if(LINUX OR ANDROID)
       set(PTHREAD_CFLAGS "-D_REENTRANT")
       set(PTHREAD_LDFLAGS "-pthread")
     elseif(BSDI)

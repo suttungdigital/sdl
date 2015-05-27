@@ -90,6 +90,8 @@ elseif(UNIX AND NOT APPLE)
     set(AIX TRUE)
   elseif(CMAKE_SYSTEM_NAME MATCHES "Minix.*")
     set(MINIX TRUE)
+  elseif(CMAKE_SYSTEM_NAME MATCHES "Android")
+    set(ANDROID TRUE)
   endif()
 elseif(APPLE)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
@@ -146,15 +148,11 @@ else()
 endif()
 
 # Default flags, if not set otherwise
-if("$ENV{CFLAGS}" STREQUAL "")
-  if(USE_GCC OR USE_CLANG)
-    set(CMAKE_C_FLAGS "-g -O3")
-  endif()
-else()
-  set(CMAKE_C_FLAGS "$ENV{CFLAGS}")
+if(NOT ("$ENV{CFLAGS}" STREQUAL ""))
+  set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} "$ENV{CFLAGS}")
   list(APPEND EXTRA_CFLAGS "$ENV{CFLAGS}")
-endif()
-if(NOT ("$ENV{CFLAGS}" STREQUAL "")) # Hackish, but does the trick on Win32
+
+  # Hackish, but does the trick on Win32
   list(APPEND EXTRA_LDFLAGS "$ENV{LDFLAGS}")
 endif()
 
@@ -765,6 +763,46 @@ elseif(UNIX AND NOT APPLE)
     CheckOpenGLESX11()
     CheckWayland()
     CheckVivante()
+  endif()
+
+  if(ANDROID)
+    file(GLOB CORE_SOURCES ${SDL2_SOURCE_DIR}/src/core/android/*.c)
+    set(SOURCE_FILES ${SOURCE_FILES} ${CORE_SOURCES})
+
+    if(SDL_STATIC)
+      file(GLOB MAIN_SOURCES ${SDL2_SOURCE_DIR}/src/main/android/*.c)
+      set(SOURCE_FILES ${SOURCE_FILES} ${MAIN_SOURCES})
+    endif()
+
+    if(SDL_JOYSTICK)
+      file(GLOB JOYSTICK_SOURCES ${SDL2_SOURCE_DIR}/src/joystick/android/*.c)
+      set(SOURCE_FILES ${SOURCE_FILES} ${JOYSTICK_SOURCES})
+      set(SDL_JOYSTICK_ANDROID 1)
+      set(HAVE_SDL_JOYSTICK TRUE)
+    endif()
+
+    if(SDL_AUDIO)
+      file(GLOB AUDIO_SOURCES ${SDL2_SOURCE_DIR}/src/audio/android/*.c)
+      set(SOURCE_FILES ${SOURCE_FILES} ${AUDIO_SOURCES})
+    endif()
+
+    if(SDL_VIDEO)
+      file(GLOB VIDEO_SOURCES ${SDL2_SOURCE_DIR}/src/video/android/*.c)
+      set(SOURCE_FILES ${SOURCE_FILES} ${VIDEO_SOURCES})
+      set(SDL_VIDEO_DRIVER_ANDROID 1)
+      set(EXTRA_CFLAGS "${EXTRA_CFLAGS} -DGL_GLEXT_PROTOTYPES")
+    endif()
+
+    if(SDL_POWER)
+      file(GLOB POWER_SOURCES ${SDL2_SOURCE_DIR}/src/power/android/*.c)
+      set(SOURCE_FILES ${SOURCE_FILES} ${POWER_SOURCES})
+    endif()
+
+    list(APPEND EXTRA_LIBS log android)
+
+    if(SDL_STATIC)
+      list(APPEND EXTRA_LDFLAGS -Wl,--undefined=Java_org_libsdl_app_SDLActivity_nativeInit)
+    endif()
   endif()
 
   if(LINUX)
