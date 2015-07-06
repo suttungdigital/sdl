@@ -69,7 +69,7 @@ button_messagebox(void *eventNumber)
             quit(2);
         }
     }
-    SDL_Log("Pressed button: %d, %s\n", button, button == 1 ? "Cancel" : "OK");
+    SDL_Log("Pressed button: %d, %s\n", button, button == -1 ? "[closed]" : button == 1 ? "Cancel" : "OK");
 
     if (eventNumber) {
         SDL_UserEvent event;
@@ -120,6 +120,16 @@ main(int argc, char *argv[])
     success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
                 "UTF-8 Simple MessageBox",
                 "Unicode text and newline:\r\n'牛肉西蘭花'\n'牛肉西蘭花'",
+                NULL);
+    if (success == -1) {
+        SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s\n", SDL_GetError());
+        quit(1);
+    }
+
+    /* Google says this is Traditional Chinese for "beef with broccoli" */
+    success = SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
+                "牛肉西蘭花",
+                "Unicode text in the title.",
                 NULL);
     if (success == -1) {
         SDL_LogError(SDL_LOG_CATEGORY_APPLICATION, "Error Presenting MessageBox: %s\n", SDL_GetError());

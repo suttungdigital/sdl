@@ -300,7 +300,7 @@ static int GLES2_LoadFunctions(GLES2_DriverContext * data)
             return SDL_SetError("Couldn't load GLES2 function %s: %s\n", #func, SDL_GetError()); \
         } \
     } while ( 0 );
-#endif /* _SDL_NOGETPROCADDR_ */
+#endif /* __SDL_NOGETPROCADDR__ */
 
 #include "SDL_gles2funcs.h"
 #undef SDL_PROC
@@ -382,8 +382,16 @@ GLES2_UpdateViewport(SDL_Renderer * renderer)
         return 0;
     }
 
-    data->glViewport(renderer->viewport.x, renderer->viewport.y,
-               renderer->viewport.w, renderer->viewport.h);
+    if (renderer->target) {
+        data->glViewport(renderer->viewport.x, renderer->viewport.y,
+                         renderer->viewport.w, renderer->viewport.h);
+    } else {
+        int w, h;
+
+        SDL_GetRendererOutputSize(renderer, &w, &h);
+        data->glViewport(renderer->viewport.x, (h - renderer->viewport.y - renderer->viewport.h),
+                         renderer->viewport.w, renderer->viewport.h);
+    }
 
     if (data->current_program) {
         GLES2_SetOrthographicProjection(renderer);
@@ -404,7 +412,14 @@ GLES2_UpdateClipRect(SDL_Renderer * renderer)
     if (renderer->clipping_enabled) {
         const SDL_Rect *rect = &renderer->clip_rect;
         data->glEnable(GL_SCISSOR_TEST);
-        data->glScissor(rect->x, renderer->viewport.h - rect->y - rect->h, rect->w, rect->h);
+        if (renderer->target) {
+            data->glScissor(renderer->viewport.x + rect->x, renderer->viewport.y + rect->y, rect->w, rect->h);
+        } else {
+            int w, h;
+
+            SDL_GetRendererOutputSize(renderer, &w, &h);
+            data->glScissor(renderer->viewport.x + rect->x, (h - renderer->viewport.y - renderer->viewport.h) + rect->y, rect->w, rect->h);
+        }
     } else {
         data->glDisable(GL_SCISSOR_TEST);
     }
@@ -1015,9 +1030,6 @@ GLES2_CacheShader(SDL_Renderer *renderer, GLES2_ShaderType type, SDL_BlendMode b
     /* Find a matching shader instance that's supported on this hardware */
     for (i = 0; i < shader->instance_count && !instance; ++i) {
         for (j = 0; j < data->shader_format_count && !instance; ++j) {
-            if (!shader->instances) {
-                continue;
-            }
             if (!shader->instances[i]) {
                 continue;
             }

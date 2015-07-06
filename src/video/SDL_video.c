@@ -1388,8 +1388,6 @@ SDL_CreateWindowFrom(const void *data)
 int
 SDL_RecreateWindow(SDL_Window * window, Uint32 flags)
 {
-    char *title = window->title;
-    SDL_Surface *icon = window->icon;
     SDL_bool loaded_opengl = SDL_FALSE;
 
     if ((flags & SDL_WINDOW_OPENGL) && !_this->GL_CreateContext) {
@@ -1429,8 +1427,6 @@ SDL_RecreateWindow(SDL_Window * window, Uint32 flags)
         }
     }
 
-    window->title = NULL;
-    window->icon = NULL;
     window->flags = ((flags & CREATE_FLAGS) | SDL_WINDOW_HIDDEN);
     window->last_fullscreen_flags = window->flags;
     window->is_destroying = SDL_FALSE;
@@ -1444,17 +1440,17 @@ SDL_RecreateWindow(SDL_Window * window, Uint32 flags)
             return -1;
         }
     }
+
     if (flags & SDL_WINDOW_FOREIGN) {
         window->flags |= SDL_WINDOW_FOREIGN;
     }
 
-    if (title) {
-        SDL_SetWindowTitle(window, title);
-        SDL_free(title);
+    if (_this->SetWindowTitle && window->title) {
+        _this->SetWindowTitle(_this, window);
     }
-    if (icon) {
-        SDL_SetWindowIcon(window, icon);
-        SDL_FreeSurface(icon);
+
+    if (_this->SetWindowIcon && window->icon) {
+        _this->SetWindowIcon(_this, window, window->icon);
     }
 
     if (window->hit_test) {
@@ -2122,28 +2118,30 @@ SDL_GetWindowGammaRamp(SDL_Window * window, Uint16 * red,
 void
 SDL_UpdateWindowGrab(SDL_Window * window)
 {
-    if (_this->SetWindowGrab) {
-        SDL_Window *grabbed_window;
-        SDL_bool grabbed;
-        if ((SDL_GetMouse()->relative_mode || (window->flags & SDL_WINDOW_INPUT_GRABBED)) &&
-             (window->flags & SDL_WINDOW_INPUT_FOCUS)) {
-            grabbed = SDL_TRUE;
-        } else {
-            grabbed = SDL_FALSE;
-        }
+    SDL_Window *grabbed_window;
+    SDL_bool grabbed;
+    if ((SDL_GetMouse()->relative_mode || (window->flags & SDL_WINDOW_INPUT_GRABBED)) &&
+         (window->flags & SDL_WINDOW_INPUT_FOCUS)) {
+        grabbed = SDL_TRUE;
+    } else {
+        grabbed = SDL_FALSE;
+    }
 
-        grabbed_window = _this->grabbed_window;
-        if (grabbed) {
-            if (grabbed_window && (grabbed_window != window)) {
-                /* stealing a grab from another window! */
-                grabbed_window->flags &= ~SDL_WINDOW_INPUT_GRABBED;
+    grabbed_window = _this->grabbed_window;
+    if (grabbed) {
+        if (grabbed_window && (grabbed_window != window)) {
+            /* stealing a grab from another window! */
+            grabbed_window->flags &= ~SDL_WINDOW_INPUT_GRABBED;
+            if (_this->SetWindowGrab) {
                 _this->SetWindowGrab(_this, grabbed_window, SDL_FALSE);
             }
-            _this->grabbed_window = window;
-        } else if (grabbed_window == window) {
-            _this->grabbed_window = NULL;  /* ungrabbing. */
         }
+        _this->grabbed_window = window;
+    } else if (grabbed_window == window) {
+        _this->grabbed_window = NULL;  /* ungrabbing. */
+    }
 
+    if (_this->SetWindowGrab) {
         _this->SetWindowGrab(_this, window, grabbed);
     }
 }

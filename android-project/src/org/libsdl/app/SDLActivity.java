@@ -27,6 +27,7 @@ import android.graphics.*;
 import android.graphics.drawable.Drawable;
 import android.media.*;
 import android.hardware.*;
+import android.content.pm.ActivityInfo;
 
 /**
     SDL Activity
@@ -116,7 +117,7 @@ public class SDLActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         Log.v(TAG, "Device: " + android.os.Build.DEVICE);
         Log.v(TAG, "Model: " + android.os.Build.MODEL);
-        Log.v(TAG, "onCreate():" + mSingleton);
+        Log.v(TAG, "onCreate(): " + mSingleton);
         super.onCreate(savedInstanceState);
 
         SDLActivity.initialize();
@@ -180,7 +181,7 @@ public class SDLActivity extends Activity {
         if (intent != null && intent.getData() != null) {
             String filename = intent.getData().getPath();
             if (filename != null) {
-                Log.v("SDL", "Get filename:" + filename);
+                Log.v(TAG, "Got filename: " + filename);
                 SDLActivity.onNativeDropFile(filename);
             }
         }
@@ -1060,7 +1061,43 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
         mWidth = width;
         mHeight = height;
         SDLActivity.onNativeResize(width, height, sdlFormat, mDisplay.getRefreshRate());
-        Log.v("SDL", "Window size:" + width + "x"+height);
+        Log.v("SDL", "Window size: " + width + "x" + height);
+
+ 
+        boolean skip = false;
+        int requestedOrientation = SDLActivity.mSingleton.getRequestedOrientation();
+
+        if (requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)
+        {
+            // Accept any
+        }
+        else if (requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_PORTRAIT)
+        {
+            if (mWidth > mHeight) {
+               skip = true;
+            }
+        } else if (requestedOrientation == ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE) {
+            if (mWidth < mHeight) {
+               skip = true;
+            }
+        }
+
+        // Special Patch for Square Resolution: Black Berry Passport
+        if (skip) {
+           double min = Math.min(mWidth, mHeight);
+           double max = Math.max(mWidth, mHeight);
+           
+           if (max / min < 1.20) {
+              Log.v("SDL", "Don't skip on such aspect-ratio. Could be a square resolution.");
+              skip = false;
+           }
+        }
+
+        if (skip) {
+           Log.v("SDL", "Skip .. Surface is not ready.");
+           return;
+        }
+
 
         // Set mIsSurfaceReady to 'true' *before* making a call to handleResume
         SDLActivity.mIsSurfaceReady = true;
@@ -1092,6 +1129,10 @@ class SDLSurface extends SurfaceView implements SurfaceHolder.Callback,
                 }
             }, "SDLThreadListener");
             SDLActivity.mSDLThread.start();
+        }
+
+        if (SDLActivity.mHasFocus) {
+            SDLActivity.handleResume();
         }
     }
 
@@ -1455,7 +1496,13 @@ class SDLJoystickHandler_API12 extends SDLJoystickHandler {
             if (joystick == null) {
                 joystick = new SDLJoystick();
                 InputDevice joystickDevice = InputDevice.getDevice(deviceIds[i]);
-                if( (joystickDevice.getSources() & InputDevice.SOURCE_CLASS_JOYSTICK) != 0) {
+
+                if ( 
+                      (joystickDevice.getSources() & InputDevice.SOURCE_CLASS_JOYSTICK) != 0 
+                   ||
+                      (joystickDevice.getSources() & InputDevice.SOURCE_CLASS_BUTTON) != 0 
+                  )
+                {
                     joystick.device_id = deviceIds[i];
                     joystick.name = joystickDevice.getName();
                     joystick.axes = new ArrayList<InputDevice.MotionRange>();

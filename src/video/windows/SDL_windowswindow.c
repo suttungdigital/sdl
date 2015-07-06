@@ -615,6 +615,7 @@ WIN_DestroyWindow(_THIS, SDL_Window * window)
 
     if (data) {
         ReleaseDC(data->hwnd, data->hdc);
+        RemoveProp(data->hwnd, TEXT("SDL_WindowData"));
         if (data->created) {
             DestroyWindow(data->hwnd);
         } else {

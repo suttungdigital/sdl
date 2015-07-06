@@ -1159,28 +1159,6 @@ CheckWarnAll()
     fi
 }
 
-dnl See if GCC's -Wshadow is supported.
-CheckWarnShadow()
-{
-    AC_MSG_CHECKING(for GCC -Wshadow option)
-    have_gcc_Wshadow=no
-
-    save_CFLAGS="$CFLAGS"
-    CFLAGS="$save_CFLAGS -Wshadow"
-    AC_TRY_COMPILE([
-    int x = 0;
-    ],[
-    ],[
-    have_gcc_Wshadow=yes
-    ])
-    AC_MSG_RESULT($have_gcc_Wshadow)
-    CFLAGS="$save_CFLAGS"
-
-    if test x$have_gcc_Wshadow = xyes; then
-        EXTRA_CFLAGS="$EXTRA_CFLAGS -Wshadow"
-    fi
-}
-
 dnl Check for Wayland
 CheckWayland()
 {
@@ -1492,18 +1470,6 @@ AC_HELP_STRING([--enable-x11-shared], [dynamically load X11 support [[default=ma
             ])
             AC_MSG_RESULT($have_const_param_XextAddDisplay)
 
-            AC_MSG_CHECKING(for const parameter to _XData32)
-	    have_const_param_xdata32=no
-	    AC_TRY_COMPILE([
-	      #include <X11/Xlibint.h>
-	      extern int _XData32(Display *dpy,register _Xconst long *data,unsigned len);
-	    ],[
-	    ],[
-	    have_const_param_xdata32=yes
-	    AC_DEFINE(SDL_VIDEO_DRIVER_X11_CONST_PARAM_XDATA32)
-	    ])
-	    AC_MSG_RESULT($have_const_param_xdata32)
-
             dnl AC_CHECK_LIB(X11, XGetEventData, AC_DEFINE(SDL_VIDEO_DRIVER_X11_SUPPORTS_GENERIC_EVENTS, 1, [Have XGenericEvent]))
             AC_MSG_CHECKING([for XGenericEvent])
             have_XGenericEvent=no
@@ -1551,6 +1517,20 @@ AC_HELP_STRING([--enable-video-x11-xcursor], [enable X11 Xcursor support [[defau
             if test x$definitely_enable_video_x11_xcursor = xyes; then
                 AC_DEFINE(SDL_VIDEO_DRIVER_X11_XCURSOR, 1, [ ])
                 SUMMARY_video_x11="${SUMMARY_video_x11} xcursor"
+            fi
+            AC_ARG_ENABLE(video-x11-xdbe,
+AC_HELP_STRING([--enable-video-x11-xdbe], [enable X11 Xdbe support [[default=yes]]]),
+                            , enable_video_x11_xdbe=yes)
+            if test x$enable_video_x11_xdbe = xyes; then
+                AC_CHECK_HEADER(X11/extensions/Xdbe.h,
+                                have_dbe_h_hdr=yes,
+                                have_dbe_h_hdr=no,
+                                [#include <X11/Xlib.h>
+                                ])
+                if test x$have_dbe_h_hdr = xyes; then
+                    AC_DEFINE(SDL_VIDEO_DRIVER_X11_XDBE, 1, [ ])
+                    SUMMARY_video_x11="${SUMMARY_video_x11} xdbe"
+                fi
             fi
             AC_ARG_ENABLE(video-x11-xinerama,
 AC_HELP_STRING([--enable-video-x11-xinerama], [enable X11 Xinerama support [[default=yes]]]),
@@ -3413,7 +3393,6 @@ esac
 
 dnl Do this on all platforms, after everything else.
 CheckWarnAll
-CheckWarnShadow
 
 # Verify that we have all the platform specific files we need
 
@@ -3554,7 +3533,7 @@ $SDLTEST_DEPENDS
 __EOF__
 
 AC_CONFIG_FILES([
-    Makefile:Makefile.in:Makefile.rules sdl2-config SDL2.spec sdl2.pc
+    Makefile:Makefile.in:Makefile.rules sdl2-config sdl2-config.cmake SDL2.spec sdl2.pc
 ])
 AC_CONFIG_COMMANDS([sdl2_config],[chmod a+x sdl2-config])
 

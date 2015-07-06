@@ -165,7 +165,8 @@ SDL_RendererEventWatch(void *userdata, SDL_Event *event)
             }
         }
     } else if (event->type == SDL_MOUSEMOTION) {
-        if (renderer->logical_w) {
+        SDL_Window *window = SDL_GetWindowFromID(event->motion.windowID);
+        if (renderer->logical_w && window == renderer->window) {
             event->motion.x -= renderer->viewport.x;
             event->motion.y -= renderer->viewport.y;
             event->motion.x = (int)(event->motion.x / renderer->scale.x);
@@ -183,7 +184,8 @@ SDL_RendererEventWatch(void *userdata, SDL_Event *event)
         }
     } else if (event->type == SDL_MOUSEBUTTONDOWN ||
                event->type == SDL_MOUSEBUTTONUP) {
-        if (renderer->logical_w) {
+        SDL_Window *window = SDL_GetWindowFromID(event->button.windowID);
+        if (renderer->logical_w && window == renderer->window) {
             event->button.x -= renderer->viewport.x;
             event->button.y -= renderer->viewport.y;
             event->button.x = (int)(event->button.x / renderer->scale.x);
@@ -1731,6 +1733,10 @@ SDL_RenderCopyEx(SDL_Renderer * renderer, SDL_Texture * texture,
     SDL_Point real_center;
     SDL_FRect frect;
     SDL_FPoint fcenter;
+
+    if (flip == SDL_FLIP_NONE && angle == 0) { /* fast path when we don't need rotation or flipping */
+        return SDL_RenderCopy(renderer, texture, srcrect, dstrect);
+    }
 
     CHECK_RENDERER_MAGIC(renderer, -1);
     CHECK_TEXTURE_MAGIC(texture, -1);

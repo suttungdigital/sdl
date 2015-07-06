@@ -899,6 +899,12 @@ X11_ShowWindow(_THIS, SDL_Window * window)
         X11_XIfEvent(display, &event, &isMapNotify, (XPointer)&data->xwindow);
         X11_XFlush(display);
     }
+
+    if (!data->videodata->net_wm) {
+        /* no WM means no FocusIn event, which confuses us. Force it. */
+        X11_XSetInputFocus(display, data->xwindow, RevertToNone, CurrentTime);
+        X11_XFlush(display);
+    }
 }
 
 void
@@ -1329,12 +1335,9 @@ X11_SetWindowGrab(_THIS, SDL_Window * window, SDL_bool grabbed)
     if (oldstyle_fullscreen || grabbed) {
         /* Try to grab the mouse */
         for (;;) {
-            const unsigned int mask = ButtonPressMask | ButtonReleaseMask 
-                | PointerMotionMask | FocusChangeMask;
             int result =
-                X11_XGrabPointer(display, data->xwindow, False, mask, 
-                             GrabModeAsync, GrabModeAsync, data->xwindow, 
-                             None, CurrentTime);
+                X11_XGrabPointer(display, data->xwindow, True, 0, GrabModeAsync,
+                             GrabModeAsync, data->xwindow, None, CurrentTime);
             if (result == GrabSuccess) {
                 break;
             }
