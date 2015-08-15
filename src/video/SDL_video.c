@@ -687,6 +687,24 @@ SDL_GetDisplayBounds(int displayIndex, SDL_Rect * rect)
     return 0;
 }
 
+int
+SDL_GetDisplayDPI(int displayIndex, float * ddpi, float * hdpi, float * vdpi)
+{
+	SDL_VideoDisplay *display;
+
+    CHECK_DISPLAY_INDEX(displayIndex, -1);
+
+    display = &_this->displays[displayIndex];
+
+	if (_this->GetDisplayDPI) {
+		if (_this->GetDisplayDPI(_this, display, ddpi, hdpi, vdpi) == 0) {
+			return 0;
+		}
+	}
+
+	return -1;
+}
+
 SDL_bool
 SDL_AddDisplayMode(SDL_VideoDisplay * display,  const SDL_DisplayMode * mode)
 {
@@ -1661,11 +1679,30 @@ SDL_GetWindowPosition(SDL_Window * window, int *x, int *y)
 
     /* Fullscreen windows are always at their display's origin */
     if (window->flags & SDL_WINDOW_FULLSCREEN) {
+        int displayIndex;
+        
         if (x) {
             *x = 0;
         }
         if (y) {
             *y = 0;
+        }
+
+        /* Find the window's monitor and update to the
+           monitor offset. */
+        displayIndex = SDL_GetWindowDisplayIndex(window);
+        if (displayIndex >= 0) {
+            SDL_Rect bounds;
+
+            SDL_zero(bounds);
+
+            SDL_GetDisplayBounds(displayIndex, &bounds);
+            if (x) {
+                *x = bounds.x;
+            }
+            if (y) {
+                *y = bounds.y;
+            }
         }
     } else {
         if (x) {
@@ -3536,6 +3573,17 @@ SDL_SetWindowHitTest(SDL_Window * window, SDL_HitTest callback, void *userdata)
     window->hit_test_data = userdata;
 
     return 0;
+}
+
+float SDL_ComputeDiagonalDPI(int hpix, int vpix, float hinches, float vinches)
+{
+	float den2 = hinches * hinches + vinches * vinches;
+	if ( den2 <= 0.0f ) {
+		return 0.0f;
+	}
+		
+	return (float)(SDL_sqrt((double)hpix * (double)hpix + (double)vpix * (double)vpix) /
+				   SDL_sqrt((double)den2));
 }
 
 /* vi: set ts=4 sw=4 expandtab: */
